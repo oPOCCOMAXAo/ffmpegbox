@@ -1,14 +1,19 @@
 package config
 
 import (
-	"fmt"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/opoccomaxao/ffmpegbox/internal/models"
+	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
+)
+
+const (
+	bytesPerMB = 1024 * 1024
 )
 
 type Config struct {
@@ -69,16 +74,16 @@ type LoggingConfig struct {
 func Load(configPath string) (*Config, error) {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read config file: %w", err)
+		return nil, errors.Wrap(err, "failed to read config file")
 	}
 
 	var cfg Config
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("failed to parse config YAML: %w", err)
+		return nil, errors.Wrap(err, "failed to parse config YAML")
 	}
 
 	if err := cfg.Validate(); err != nil {
-		return nil, fmt.Errorf("config validation failed: %w", err)
+		return nil, errors.Wrap(err, "config validation failed")
 	}
 
 	return &cfg, nil
@@ -86,27 +91,27 @@ func Load(configPath string) (*Config, error) {
 
 func (c *Config) Validate() error {
 	if err := c.Server.Validate(); err != nil {
-		return fmt.Errorf("server config: %w", err)
+		return errors.Wrap(err, "server config")
 	}
 
 	if err := c.Auth.Validate(); err != nil {
-		return fmt.Errorf("auth config: %w", err)
+		return errors.Wrap(err, "auth config")
 	}
 
 	if err := c.Processing.Validate(); err != nil {
-		return fmt.Errorf("processing config: %w", err)
+		return errors.Wrap(err, "processing config")
 	}
 
 	if err := c.FFmpeg.Validate(); err != nil {
-		return fmt.Errorf("ffmpeg config: %w", err)
+		return errors.Wrap(err, "ffmpeg config")
 	}
 
 	if err := c.Storage.Validate(); err != nil {
-		return fmt.Errorf("storage config: %w", err)
+		return errors.Wrap(err, "storage config")
 	}
 
 	if err := c.Logging.Validate(); err != nil {
-		return fmt.Errorf("logging config: %w", err)
+		return errors.Wrap(err, "logging config")
 	}
 
 	return nil
@@ -114,19 +119,19 @@ func (c *Config) Validate() error {
 
 func (s *ServerConfig) Validate() error {
 	if s.Port <= 0 || s.Port > 65535 {
-		return fmt.Errorf("invalid port %d, must be 1-65535", s.Port)
+		return errors.Wrapf(models.ErrInvalidParameter, "invalid port %d, must be 1-65535", s.Port)
 	}
 
 	if _, err := time.ParseDuration(s.ReadTimeout); err != nil {
-		return fmt.Errorf("invalid read_timeout: %w", err)
+		return errors.Wrap(err, "invalid read_timeout")
 	}
 
 	if _, err := time.ParseDuration(s.WriteTimeout); err != nil {
-		return fmt.Errorf("invalid write_timeout: %w", err)
+		return errors.Wrap(err, "invalid write_timeout")
 	}
 
 	if s.BindAddress == "" {
-		return fmt.Errorf("bind_address cannot be empty")
+		return errors.Wrap(models.ErrInvalidParameter, "bind_address cannot be empty")
 	}
 
 	return nil
@@ -138,7 +143,7 @@ func (a *AuthConfig) Validate() error {
 	}
 
 	if len(a.Clients) == 0 {
-		return fmt.Errorf("auth is enabled but no clients configured")
+		return errors.Wrap(models.ErrInvalidParameter, "auth is enabled but no clients configured")
 	}
 
 	seenKeys := make(map[string]bool)
@@ -146,25 +151,27 @@ func (a *AuthConfig) Validate() error {
 
 	for i, client := range a.Clients {
 		if client.APIKey == "" {
-			return fmt.Errorf("client[%d]: api_key cannot be empty", i)
+			return errors.Wrapf(models.ErrInvalidParameter, "client[%d]: api_key cannot be empty", i)
 		}
 
 		if seenKeys[client.APIKey] {
-			return fmt.Errorf("client[%d]: duplicate api_key", i)
+			return errors.Wrapf(models.ErrInvalidParameter, "client[%d]: duplicate api_key", i)
 		}
+
 		seenKeys[client.APIKey] = true
 
 		if client.Name == "" {
-			return fmt.Errorf("client[%d]: name cannot be empty", i)
+			return errors.Wrapf(models.ErrInvalidParameter, "client[%d]: name cannot be empty", i)
 		}
 
 		if seenNames[client.Name] {
-			return fmt.Errorf("client[%d]: duplicate name %q", i, client.Name)
+			return errors.Wrapf(models.ErrInvalidParameter, "client[%d]: duplicate name %q", i, client.Name)
 		}
+
 		seenNames[client.Name] = true
 
 		if client.MaxParallelTasks < 1 {
-			return fmt.Errorf("client[%d] (%s): max_parallel_tasks must be >= 1", i, client.Name)
+			return errors.Wrapf(models.ErrInvalidParameter, "client[%d] (%s): max_parallel_tasks must be >= 1", i, client.Name)
 		}
 	}
 
@@ -173,23 +180,23 @@ func (a *AuthConfig) Validate() error {
 
 func (p *ProcessingConfig) Validate() error {
 	if p.GlobalMaxParallelTasks < 1 {
-		return fmt.Errorf("global_max_parallel_tasks must be >= 1")
+		return errors.Wrap(models.ErrInvalidParameter, "global_max_parallel_tasks must be >= 1")
 	}
 
 	if p.WorkerCount < 1 {
-		return fmt.Errorf("worker_count must be >= 1")
+		return errors.Wrap(models.ErrInvalidParameter, "worker_count must be >= 1")
 	}
 
 	if p.MaxFileSizeMB < 1 {
-		return fmt.Errorf("max_file_size_mb must be >= 1")
+		return errors.Wrap(models.ErrInvalidParameter, "max_file_size_mb must be >= 1")
 	}
 
 	if _, err := time.ParseDuration(p.TaskTimeout); err != nil {
-		return fmt.Errorf("invalid task_timeout: %w", err)
+		return errors.Wrap(err, "invalid task_timeout")
 	}
 
 	if _, err := time.ParseDuration(p.CleanupAge); err != nil {
-		return fmt.Errorf("invalid cleanup_age: %w", err)
+		return errors.Wrap(err, "invalid cleanup_age")
 	}
 
 	return nil
@@ -197,31 +204,35 @@ func (p *ProcessingConfig) Validate() error {
 
 func (f *FFmpegConfig) Validate() error {
 	if f.BinaryPath == "" {
-		return fmt.Errorf("binary_path cannot be empty")
+		return errors.Wrap(models.ErrInvalidParameter, "binary_path cannot be empty")
 	}
 
 	if len(f.AllowedOutputFormats) == 0 {
-		return fmt.Errorf("allowed_output_formats cannot be empty")
+		return errors.Wrap(models.ErrInvalidParameter, "allowed_output_formats cannot be empty")
 	}
 
 	if len(f.AllowedVideoCodecs) == 0 {
-		return fmt.Errorf("allowed_video_codecs cannot be empty")
+		return errors.Wrap(models.ErrInvalidParameter, "allowed_video_codecs cannot be empty")
 	}
 
 	if len(f.AllowedAudioCodecs) == 0 {
-		return fmt.Errorf("allowed_audio_codecs cannot be empty")
+		return errors.Wrap(models.ErrInvalidParameter, "allowed_audio_codecs cannot be empty")
 	}
 
 	if len(f.AllowedPresets) == 0 {
-		return fmt.Errorf("allowed_presets cannot be empty")
+		return errors.Wrap(models.ErrInvalidParameter, "allowed_presets cannot be empty")
 	}
 
 	if !isValidResolution(f.MaxResolution) {
-		return fmt.Errorf("invalid max_resolution format: %q (expected WIDTHxHEIGHT)", f.MaxResolution)
+		return errors.Wrapf(
+			models.ErrInvalidParameter,
+			"invalid max_resolution format: %q (expected WIDTHxHEIGHT)",
+			f.MaxResolution,
+		)
 	}
 
 	if f.MaxFramerate < 1 || f.MaxFramerate > 240 {
-		return fmt.Errorf("max_framerate must be 1-240, got %d", f.MaxFramerate)
+		return errors.Wrapf(models.ErrInvalidParameter, "max_framerate must be 1-240, got %d", f.MaxFramerate)
 	}
 
 	return nil
@@ -229,11 +240,11 @@ func (f *FFmpegConfig) Validate() error {
 
 func (s *StorageConfig) Validate() error {
 	if s.TempDir == "" {
-		return fmt.Errorf("temp_dir cannot be empty")
+		return errors.Wrap(models.ErrInvalidParameter, "temp_dir cannot be empty")
 	}
 
 	if s.DatabasePath == "" {
-		return fmt.Errorf("database_path cannot be empty")
+		return errors.Wrap(models.ErrInvalidParameter, "database_path cannot be empty")
 	}
 
 	return nil
@@ -248,7 +259,11 @@ func (l *LoggingConfig) Validate() error {
 	}
 
 	if !validLevels[l.Level] {
-		return fmt.Errorf("invalid log level %q, must be one of: debug, info, warn, error", l.Level)
+		return errors.Wrapf(
+			models.ErrInvalidParameter,
+			"invalid log level %q, must be one of: debug, info, warn, error",
+			l.Level,
+		)
 	}
 
 	validFormats := map[string]bool{
@@ -257,7 +272,11 @@ func (l *LoggingConfig) Validate() error {
 	}
 
 	if !validFormats[l.Format] {
-		return fmt.Errorf("invalid log format %q, must be one of: json, text", l.Format)
+		return errors.Wrapf(
+			models.ErrInvalidParameter,
+			"invalid log format %q, must be one of: json, text",
+			l.Format,
+		)
 	}
 
 	return nil
@@ -269,51 +288,61 @@ func (a *AuthConfig) GetClientByAPIKey(apiKey string) *ClientConfig {
 			return &a.Clients[i]
 		}
 	}
+
 	return nil
 }
 
 func (s *ServerConfig) GetReadTimeout() time.Duration {
 	d, _ := time.ParseDuration(s.ReadTimeout)
+
 	return d
 }
 
 func (s *ServerConfig) GetWriteTimeout() time.Duration {
 	d, _ := time.ParseDuration(s.WriteTimeout)
+
 	return d
 }
 
 func (p *ProcessingConfig) GetMaxFileSizeBytes() int64 {
-	return int64(p.MaxFileSizeMB) * 1024 * 1024
+	return int64(p.MaxFileSizeMB) * bytesPerMB
 }
 
 func (p *ProcessingConfig) GetTaskTimeout() time.Duration {
 	d, _ := time.ParseDuration(p.TaskTimeout)
+
 	return d
 }
 
 func (p *ProcessingConfig) GetCleanupAge() time.Duration {
 	d, _ := time.ParseDuration(p.CleanupAge)
+
 	return d
 }
 
-func ParseResolution(resolution string) (width, height int, err error) {
+func ParseResolution(resolution string) (int, int, error) {
 	if !isValidResolution(resolution) {
-		return 0, 0, fmt.Errorf("invalid resolution format: %q (expected WIDTHxHEIGHT)", resolution)
+		return 0, 0, errors.Wrapf(
+			models.ErrInvalidParameter,
+			"invalid resolution format: %q (expected WIDTHxHEIGHT)",
+			resolution,
+		)
 	}
 
 	parts := strings.Split(resolution, "x")
-	width, err = strconv.Atoi(parts[0])
+
+	width, err := strconv.Atoi(parts[0])
 	if err != nil {
-		return 0, 0, fmt.Errorf("invalid width in resolution: %w", err)
+		return 0, 0, errors.Wrap(err, "invalid width in resolution")
 	}
 
-	height, err = strconv.Atoi(parts[1])
+	height, err := strconv.Atoi(parts[1])
 	if err != nil {
-		return 0, 0, fmt.Errorf("invalid height in resolution: %w", err)
+		return 0, 0, errors.Wrap(err, "invalid height in resolution")
 	}
 
 	if width < 1 || height < 1 {
-		return 0, 0, fmt.Errorf("resolution dimensions must be positive")
+		return 0, 0, errors.Wrap(models.ErrInvalidParameter, "resolution dimensions must be positive")
 	}
 
 	return width, height, nil
@@ -321,6 +350,7 @@ func ParseResolution(resolution string) (width, height int, err error) {
 
 func isValidResolution(resolution string) bool {
 	matched, _ := regexp.MatchString(`^\d+x\d+$`, resolution)
+
 	return matched
 }
 
@@ -329,14 +359,6 @@ func (f *FFmpegConfig) GetMaxResolutionPixels() (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	return width * height, nil
-}
 
-func Contains(slice []string, value string) bool {
-	for _, item := range slice {
-		if item == value {
-			return true
-		}
-	}
-	return false
+	return width * height, nil
 }

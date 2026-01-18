@@ -38,6 +38,7 @@ func main() {
 
 func initLogger(cfg *config.Config) *slog.Logger {
 	var level slog.Level
+
 	switch cfg.Logging.Level {
 	case "debug":
 		level = slog.LevelDebug

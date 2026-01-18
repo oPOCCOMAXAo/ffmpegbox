@@ -1,0 +1,146 @@
+linters-settings:
+  gofumpt:
+    module-path: github.com/opoccomaxao/ffmpegbox
+    extra-rules: true
+  varnamelen:
+    ignore-names:
+      - "ok"
+      - "t"
+      - "tC"
+      - "db"
+      - "tx"
+      - "id"
+      - "i"
+      - "wg" # wait group
+  mnd:
+    ignored-numbers: ["2", "10", "100", "32", "64"]
+  wrapcheck:
+    ignorePackageGlobs:
+      - "github.com/opoccomaxao/ffmpegbox/*" # all errors in project are wrapped
+      - "github.com/pkg/errors" # all errors in pkg/errors are wrapped
+  gosec:
+    exclude-generated: false
+    severity: low
+    confidence: low
+    excludes:
+      - G404
+  godot:
+    exclude:
+      - "^@*"
+  gofmt:
+    simplify: true
+    rewrite-rules:
+      - pattern: "interface{}"
+        replacement: "any"
+
+linters:
+  enable:
+    # default
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+
+    # nondefault
+    - asasalint
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - containedctx
+    - contextcheck
+    - cyclop
+    - decorder
+    - dogsled
+    - dupl
+    - durationcheck
+    - err113
+    - errchkjson
+    - errname
+    - errorlint
+    - forbidigo
+    - forcetypeassert
+    - funlen
+    - gci
+    - ginkgolinter
+    - gocheckcompilerdirectives
+    - gochecknoglobals
+    - gochecknoinits
+    - gocognit
+    - goconst
+    - gocritic
+    - gocyclo
+    - godot
+    - godox
+    - gofmt
+    - gofumpt
+    - goheader
+    - goimports
+    - gomoddirectives
+    - gomodguard
+    - goprintffuncname
+    - gosec
+    - gosmopolitan
+    - grouper
+    - importas
+    - interfacebloat
+    - lll
+    - loggercheck
+    - maintidx
+    - makezero
+    - mnd
+    - mirror
+    - misspell
+    - musttag
+    - nakedret
+    - nestif
+    - nilerr
+    - nilnil
+    - nlreturn
+    - noctx
+    - nolintlint
+    - nonamedreturns
+    - nosprintfhostport
+    - prealloc
+    - predeclared
+    - promlinter
+    - reassign
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - stylecheck
+    - tagalign
+    - testableexamples
+    - thelper
+    - unconvert
+    - unparam
+    - usestdlibvars
+    - varnamelen
+    - wastedassign
+    - whitespace
+    - wrapcheck
+    - wsl
+    - zerologlint
+
+issues:
+  fix: true
+  new: false
+  exclude-rules:
+    - path: (.+)_test.go
+      linters:
+        - funlen
+        - goconst
+        - dupl
+        - gochecknoglobals
+        - varnamelen
+        - containedctx
+        - musttag
+        - lll
+    # too long comments for swagger.
+    - source: "^//"
+      linters:
+        - lll
+
+run:
+  timeout: 5m
