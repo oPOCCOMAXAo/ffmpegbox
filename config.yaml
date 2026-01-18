@@ -1,0 +1,40 @@
+server:
+  port: 8080
+  read_timeout: 30s
+  write_timeout: 300s
+  bind_address: "127.0.0.1"
+
+auth:
+  enabled: true
+  clients:
+    - api_key: "service-a-secret-key-123"
+      name: "service-a"
+      max_parallel_tasks: 3
+    - api_key: "service-b-secret-key-456"
+      name: "service-b"
+      max_parallel_tasks: 5
+
+processing:
+  global_max_parallel_tasks: 10
+  worker_count: 1
+  max_file_size_mb: 500
+  task_timeout: 10m
+  cleanup_age: 24h
+
+ffmpeg:
+  binary_path: "/usr/bin/ffmpeg"
+  allowed_output_formats: ["mp4", "webm", "mkv", "avi", "mp3", "wav", "ogg", "flac"]
+  allowed_video_codecs: ["libx264", "libx265", "libvpx", "libvpx-vp9", "copy"]
+  allowed_audio_codecs: ["aac", "libmp3lame", "libopus", "libvorbis", "copy"]
+  allowed_presets:
+    ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"]
+  max_resolution: "3840x2160"
+  max_framerate: 120
+
+storage:
+  temp_dir: ./tmp # "/tmp/ffmpegbox"
+  database_path: ./db # "/var/lib/ffmpegbox/tasks.db"
+
+logging:
+  level: "info"
+  format: "text"
