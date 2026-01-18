@@ -2,9 +2,6 @@ package config
 
 import (
 	"os"
-	"regexp"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/opoccomaxao/ffmpegbox/internal/models"
@@ -57,7 +54,8 @@ type FFmpegConfig struct {
 	AllowedVideoCodecs   []string `yaml:"allowed_video_codecs"`
 	AllowedAudioCodecs   []string `yaml:"allowed_audio_codecs"`
 	AllowedPresets       []string `yaml:"allowed_presets"`
-	MaxResolution        string   `yaml:"max_resolution"`
+	MaxWidth             int      `yaml:"max_width"`
+	MaxHeight            int      `yaml:"max_height"`
 	MaxFramerate         int      `yaml:"max_framerate"`
 }
 
@@ -223,12 +221,12 @@ func (f *FFmpegConfig) Validate() error {
 		return errors.Wrap(models.ErrInvalidParameter, "allowed_presets cannot be empty")
 	}
 
-	if !isValidResolution(f.MaxResolution) {
-		return errors.Wrapf(
-			models.ErrInvalidParameter,
-			"invalid max_resolution format: %q (expected WIDTHxHEIGHT)",
-			f.MaxResolution,
-		)
+	if f.MaxWidth < 1 {
+		return errors.Wrapf(models.ErrInvalidParameter, "max_width must be >= 1, got %d", f.MaxWidth)
+	}
+
+	if f.MaxHeight < 1 {
+		return errors.Wrapf(models.ErrInvalidParameter, "max_height must be >= 1, got %d", f.MaxHeight)
 	}
 
 	if f.MaxFramerate < 1 || f.MaxFramerate > 240 {
@@ -318,47 +316,4 @@ func (p *ProcessingConfig) GetCleanupAge() time.Duration {
 	d, _ := time.ParseDuration(p.CleanupAge)
 
 	return d
-}
-
-func ParseResolution(resolution string) (int, int, error) {
-	if !isValidResolution(resolution) {
-		return 0, 0, errors.Wrapf(
-			models.ErrInvalidParameter,
-			"invalid resolution format: %q (expected WIDTHxHEIGHT)",
-			resolution,
-		)
-	}
-
-	parts := strings.Split(resolution, "x")
-
-	width, err := strconv.Atoi(parts[0])
-	if err != nil {
-		return 0, 0, errors.Wrap(err, "invalid width in resolution")
-	}
-
-	height, err := strconv.Atoi(parts[1])
-	if err != nil {
-		return 0, 0, errors.Wrap(err, "invalid height in resolution")
-	}
-
-	if width < 1 || height < 1 {
-		return 0, 0, errors.Wrap(models.ErrInvalidParameter, "resolution dimensions must be positive")
-	}
-
-	return width, height, nil
-}
-
-func isValidResolution(resolution string) bool {
-	matched, _ := regexp.MatchString(`^\d+x\d+$`, resolution)
-
-	return matched
-}
-
-func (f *FFmpegConfig) GetMaxResolutionPixels() (int, error) {
-	width, height, err := ParseResolution(f.MaxResolution)
-	if err != nil {
-		return 0, err
-	}
-
-	return width * height, nil
 }

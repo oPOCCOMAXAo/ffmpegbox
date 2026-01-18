@@ -28,7 +28,8 @@ ffmpeg:
   allowed_audio_codecs: ["aac", "libmp3lame", "libopus", "libvorbis", "copy"]
   allowed_presets:
     ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"]
-  max_resolution: "3840x2160"
+  max_width: 3840
+  max_height: 2160
   max_framerate: 120
 
 storage:

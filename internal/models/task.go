@@ -11,9 +11,10 @@ type Task struct {
 	OutputFormat   string     `gorm:"column:output_format;not null;type:text"`
 	VideoCodec     string     `gorm:"column:video_codec;type:text"`
 	AudioCodec     string     `gorm:"column:audio_codec;type:text"`
-	VideoBitrate   string     `gorm:"column:video_bitrate;type:text"`
-	AudioBitrate   string     `gorm:"column:audio_bitrate;type:text"`
-	Resolution     string     `gorm:"column:resolution;type:text"`
+	VideoBitrate   int64      `gorm:"column:video_bitrate;type:integer"` // in bits per second.
+	AudioBitrate   int64      `gorm:"column:audio_bitrate;type:integer"` // in bits per second.
+	Height         int        `gorm:"column:height;type:integer"`
+	Width          int        `gorm:"column:width;type:integer"`
 	Framerate      int        `gorm:"column:framerate;type:integer"`
 	Preset         string     `gorm:"column:preset;type:text"`
 }
