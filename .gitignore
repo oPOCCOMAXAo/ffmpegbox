@@ -1,0 +1,12 @@
+.vscode/
+.local/
+
+.env
+*.env
+*.log
+
+bin/
+
+.claude/
+CLAUDE.md
+AGENTS.md
